@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { addData, getAllData, getAllByIndex } from '../database/index';
+// 1. Added putData to the import list here:
+import { addData, getAllData, getAllByIndex, putData } from '../database/index';
 
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref(JSON.parse(localStorage.getItem('mini_social_user')) || null);
@@ -45,7 +46,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const updatedUser = { ...currentUser.value, username: newUsername, bio: newBio };
-    await addData('users', updatedUser);
+    
+    // 2. Swapped addData out for putData here:
+    await putData('users', updatedUser);
     
     currentUser.value = updatedUser;
     localStorage.setItem('mini_social_user', JSON.stringify(updatedUser));

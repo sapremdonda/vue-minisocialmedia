@@ -1,44 +1,38 @@
 const DB_NAME = 'MiniSocialDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
-export const initDB = () => {
+const initDB = () => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+    request.onerror = (event) => {
+      console.error("Database error: ", event.target.error);
+      reject(event.target.error);
+    };
+
+    request.onsuccess = (event) => {
+      resolve(event.target.result);
+    };
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
 
       if (!db.objectStoreNames.contains('users')) {
-        const users = db.createObjectStore('users', { keyPath: 'id' });
-        users.createIndex('username', 'username', { unique: true });
+        const userStore = db.createObjectStore('users', { keyPath: 'id' });
+        userStore.createIndex('username', 'username', { unique: true });
       }
 
       if (!db.objectStoreNames.contains('posts')) {
-        const posts = db.createObjectStore('posts', { keyPath: 'id' });
-        posts.createIndex('author_id', 'author_id', { unique: false });
-        posts.createIndex('timestamp', 'timestamp', { unique: false });
+        db.createObjectStore('posts', { keyPath: 'id' });
       }
-
-      if (!db.objectStoreNames.contains('likes')) {
-        const likes = db.createObjectStore('likes', { keyPath: 'id' });
-        likes.createIndex('post_id', 'post_id', { unique: false });
-        likes.createIndex('user_id', 'user_id', { unique: false });
-        likes.createIndex('post_user', ['post_id', 'user_id'], { unique: true });
-      }
-
       if (!db.objectStoreNames.contains('follows')) {
-        const follows = db.createObjectStore('follows', { keyPath: 'id' });
-        follows.createIndex('follower_id', 'follower_id', { unique: false });
-        follows.createIndex('following_id', 'following_id', { unique: false });
-        follows.createIndex('follower_following', ['follower_id', 'following_id'], { unique: true });
+        db.createObjectStore('follows', { keyPath: 'id' });
       }
-
+      if (!db.objectStoreNames.contains('likes')) {
+        db.createObjectStore('likes', { keyPath: 'id' });
+      }
       if (!db.objectStoreNames.contains('comments')) {
-        const comments = db.createObjectStore('comments', { keyPath: 'id' });
-        comments.createIndex('post_id', 'post_id', { unique: false });
+        db.createObjectStore('comments', { keyPath: 'id' });
       }
     };
   });
@@ -47,9 +41,21 @@ export const initDB = () => {
 export const addData = async (storeName, data) => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readwrite');
+    const transaction = db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
     const request = store.add(data);
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const putData = async (storeName, data) => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.put(data); 
 
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -59,7 +65,7 @@ export const addData = async (storeName, data) => {
 export const getAllData = async (storeName) => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readonly');
+    const transaction = db.transaction([storeName], 'readonly');
     const store = transaction.objectStore(storeName);
     const request = store.getAll();
 
@@ -71,7 +77,7 @@ export const getAllData = async (storeName) => {
 export const getAllByIndex = async (storeName, indexName, value) => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readonly');
+    const transaction = db.transaction([storeName], 'readonly');
     const store = transaction.objectStore(storeName);
     const index = store.index(indexName);
     const request = index.getAll(value);
@@ -84,11 +90,11 @@ export const getAllByIndex = async (storeName, indexName, value) => {
 export const deleteData = async (storeName, id) => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readwrite');
+    const transaction = db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
     const request = store.delete(id);
 
-    request.onsuccess = () => resolve();
+    request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 };
