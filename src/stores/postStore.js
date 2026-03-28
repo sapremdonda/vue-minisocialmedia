@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { addData, getAllData, deleteData } from '../database/index';
+import { addData, getAllData, deleteData, putData } from '../database/index';
 import { useAuthStore } from './authStore';
 
 export const usePostStore = defineStore('post', () => {
@@ -41,13 +41,15 @@ export const usePostStore = defineStore('post', () => {
     }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   };
 
-  const createPost = async (text) => {
+  const createPost = async (text, mediaUrl = null, mediaType = null) => {
     const authStore = useAuthStore();
     const post = {
       id: crypto.randomUUID(),
       author_id: authStore.currentUser.id,
       author_username: authStore.currentUser.username,
       text,
+      mediaUrl,
+      mediaType,
       timestamp: new Date().toISOString()
     };
     await addData('posts', post);
@@ -77,11 +79,12 @@ export const usePostStore = defineStore('post', () => {
     await loadFeed();
   };
 
-  const addComment = async (postId, text) => {
+  const addComment = async (postId, text, parentId = null) => {
     const authStore = useAuthStore();
     const comment = {
       id: crypto.randomUUID(),
       post_id: postId,
+      parent_id: parentId, // Links this comment to another comment if it's a reply
       author_id: authStore.currentUser.id,
       author_username: authStore.currentUser.username,
       text,
